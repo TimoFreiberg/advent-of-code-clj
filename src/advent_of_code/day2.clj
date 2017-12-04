@@ -6,7 +6,7 @@
 (defn divs [a b]
   (and (not= a b)
        (= 0
-          (mod b a))))
+          (mod a b))))
 
 (defn list-pairs [coll]
   (for [x coll y coll]
@@ -22,11 +22,10 @@
   (divs a b))
 
 (defn find-divisible-pair [coll]
-  ;; (let [pairs (list-pairs coll)
-  ;;       dividing-pairs (filter div-pair? pairs)])
   (->> coll
        (list-pairs)
-       (filter div-pair?)))
+       (filter div-pair?)
+       (first)))
 
 (defn only-divisible-quotient [coll]
   (let [[a b] (find-divisible-pair coll)]
@@ -34,7 +33,7 @@
 
 (defn string->ints [string]
   (let [split (clojure.string/split string #"\s+")]
-    (map #(Integer/parseInt %) split)))
+    (mapv #(Integer/parseInt %) split)))
 
 (defn solve-1 [input]
   (->> input
@@ -52,7 +51,6 @@
 
 (defn solve-day-2 []
   (let [input (load-input-file "2")]
-    (println input)
     (println (solve-1 input))
     (println (solve-2 input))))
 
