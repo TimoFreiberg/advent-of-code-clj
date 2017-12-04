@@ -1,4 +1,4 @@
-(ns advent-of-code.day2 (:require [advent-of-code.main :refer [load-input-file]]))
+(ns advent-of-code.day2 (:require [advent-of-code.main :refer [load-input-file find-first]]))
 
 (defn greatest-diff [coll]
   (- (apply max coll) (apply min coll)))
@@ -11,9 +11,6 @@
 (defn list-pairs [coll]
   (for [x coll y coll]
     [x y]))
-
-(defn find-first [pred coll]
-  (first (filter pred coll)))
 
 (defn divs-one-in [coll x]
   (filter #(divs x %) coll))
