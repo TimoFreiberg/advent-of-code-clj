@@ -1,4 +1,4 @@
-(ns advent-of-code.day3 (:require [advent-of-code.main :refer [load-input-file]]))
+(ns advent-of-code.day3 (:require [advent-of-code.main :refer [load-input-file find-first]]))
 
 (defn move-field [field dir]
   (let [[pos by]
@@ -25,15 +25,22 @@
 
 (def spiral (lazy-seq
              (let [start {:x 0 :y 0 :val 1}]
-               (cons start
-                     (reduce
-                      (fn
-                        [[field fields] side-length]
-                        (let [[last-field new-fields] (run-spiral field side-length)]
-                          [last-field (concat fields new-fields)]))
-                      [start []] (range 2 Long/MAX_VALUE 2))))))
+               (map second
+                    (reductions
+                     (fn
+                       [[field _] side-length]
+                       (let [[last-field new-fields] (run-spiral field side-length)]
+                         [last-field new-fields]))
+                     [start [start]] (iterate #(+ 2 %) 2))))))
 
-(defn solve-1 [input])
+(defn add-coords [{x :x y :y}]
+  (+ (Math/abs x) (Math/abs y)))
+
+(defn solve-1 [input]
+  (->> spiral
+       (find-first #(= input (:val %)))
+       (add-coords)))
+
 (defn solve-2 [input])
 
 (defn solve-day-3 []
