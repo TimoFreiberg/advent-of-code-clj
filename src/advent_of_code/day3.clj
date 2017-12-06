@@ -49,10 +49,6 @@
 (defn find-field-at [fields [x y]]
   (find-first #(coords-match x y %) fields))
 
-(defn trace [s]
-  (println s)
-  s)
-
 (defn sum-of-neighbors [fields x y]
   (->> (neighbor-coords x y)
        (map #(find-field-at fields %))
@@ -64,10 +60,42 @@
   (let [updated-field (assoc new-field :val (sum-of-neighbors fields x y))]
     [(conj fields updated-field) updated-field]))
 
+(def spiral-maker
+  (let [first-field {:x 0 :y 0 :val 1}]
+    {:spiral [first-field] :side-length 2 :last-field first-field :stop-cond (fn [& _] true)}))
+
+(defn run-spiral-maker [spiral-maker]
+  (let [sp (atom (:spiral spiral-maker))
+        last-field (atom (:last-field spiral-maker))
+        side-length (atom (:side-length spiral-maker))
+        stop? (atom nil)
+        move! (fn [dir]
+                (let [new-field (move-field @last-field dir)]
+                  (do
+                    (if ((:stop-cond spiral-maker) new-field)
+                      (swap! stop? (fn [_] :stop)))
+                    (when (not= :stop @stop?)
+                      (swap! last-field move-field dir)
+                      (swap! sp conj @last-field)))))]
+
+    (while (not= :stop @stop?)
+      (do
+        (move! :right)
+        (dotimes [_ (dec @side-length)]
+          (move! :up))
+        (dotimes [_ @side-length]
+          (move! :left))
+        (dotimes [_ @side-length]
+          (move! :down))
+        (dotimes [_ @side-length]
+          (move! :right))
+        (swap! side-length #(+ 2 %))
+        ))
+    @last-field))
+
 (def spiral-with-neighbor-sum-vals
   (let [first-field (first spiral)]
     (map second (reductions add-field-with-neighbor-sum-val [[first-field] first-field] (rest spiral)))))
-
 
 (defn add-coords [{x :x y :y}]
   (+ (Math/abs x) (Math/abs y)))
@@ -82,8 +110,14 @@
   (->> spiral-with-neighbor-sum-vals
        (map :val)
        (drop-while #(>= input %))
-       (first)
-       ))
+       (first)))
+
+(defn solve-1-alt []
+  (-> spiral-maker
+      (assoc :stop-cond #(< 347991 (:val %)))
+       (run-spiral-maker)
+       (:last-field)
+       (println)))
 
 (defn solve-day-3 []
   (let [input 347991]
