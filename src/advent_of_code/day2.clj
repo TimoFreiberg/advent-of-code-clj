@@ -9,8 +9,8 @@
           (mod a b))))
 
 (defn list-pairs [coll]
-  (for [x coll y coll]
-    [x y]))
+  (lazy-seq (for [x coll y coll]
+              [x y])))
 
 (defn divs-one-in [coll x]
   (filter #(divs x %) coll))
