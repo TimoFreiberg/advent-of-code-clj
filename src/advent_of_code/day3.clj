@@ -1,4 +1,5 @@
 (ns advent-of-code.day3 (:require [advent-of-code.main :refer [load-input-file find-first]]))
+(use 'criterium.core)
 
 (defn move-field [field dir]
   (let [[pos by]
@@ -28,7 +29,7 @@
     [bot-right-field-2
      (concat [bot-right-field] right-fields top-fields left-fields bot-fields)]))
 
-(def spiral (lazy-seq
+(defn spiral [] (lazy-seq
              (let [start {:x 0 :y 0 :val 1}]
                (mapcat second
                        (reductions
@@ -112,12 +113,15 @@
        (drop-while #(>= input %))
        (first)))
 
-(defn solve-1-alt []
+(def input 347991)
+(defn solve-1-functional [] (solve-1 input))
+
+(defn solve-1-imperative []
   (-> spiral-maker
-      (assoc :stop-cond #(< 347991 (:val %)))
-       (run-spiral-maker)
-       (:last-field)
-       (println)))
+      (assoc :stop-cond #(< input (:val %)))
+      (run-spiral-maker)
+      (add-coords)))
+;; interesting, criterion says that solve-1-functional takes ~16ms, solve-1-imperative takes ~325ms
 
 (defn solve-day-3 []
   (let [input 347991]
