@@ -29,7 +29,7 @@
     [bot-right-field-2
      (concat [bot-right-field] right-fields top-fields left-fields bot-fields)]))
 
-(defn spiral [] (lazy-seq
+(def spiral (lazy-seq
              (let [start {:x 0 :y 0 :val 1}]
                (mapcat second
                        (reductions
