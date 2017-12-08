@@ -5,10 +5,10 @@
 (defn parse-line [line]
   (let [[base children] (clojure.string/split line #"->")
         [name weight] (split-words base)
-        children-vec (->> children
-                          (fnil split-commas "")
+        children-vec (if children
+                          ((fnil split-commas ""))
                           (map clojure.string/trim))]
-    [name children-vec]))
+    {:name name :children children-vec }))
 
 (defn solve-1 [input]
   (->> input
@@ -21,5 +21,5 @@
 
 (defn solve-day-7 []
   (let [input (load-input-file "7")]
-    (println (solve-1 input))
-    (println (solve-2 input))))
+    (clojure.pprint/pprint (solve-1 input))
+    (clojure.pprint/pprint (solve-2 input))))
