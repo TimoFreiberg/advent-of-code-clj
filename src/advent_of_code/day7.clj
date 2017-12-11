@@ -58,14 +58,6 @@
                          (first))]
     (find-first #(= outlier-key (f %)) coll)))
 
-(defn find-leafmost-node-with-unbalanced-children [tree]
-  (let [root (find-root tree)]
-    (loop [node root]
-      (cond
-        (has-no-children node) :tree-balanced
-        (has-balanced-children node tree) node
-        :else (recur (find-outlier-by :sum-weight (get-children tree node)))))))
-
 (defn find-parent [node tree]
   (let [possible-parents (filter #(has-child % (:name node)) tree)]
     (first possible-parents)))
@@ -76,6 +68,14 @@
       (if parent
         (recur parent)
         node))))
+
+(defn find-leafmost-node-with-unbalanced-children [tree]
+  (let [root (find-root tree)]
+    (loop [node root]
+      (cond
+        (has-no-children node) :tree-balanced
+        (has-balanced-children node tree) node
+        :else (recur (find-outlier-by :sum-weight (get-children tree node)))))))
 
 (defn make-tree [input-string]
   (->> input-string
