@@ -6,31 +6,57 @@
     {:pos pos :val 0 :range range}))
 
 
+(defn cycle-range [n]
+  (concat (range n) (range (- n 2) 0 -1)))
+
 (defn layer-val-at-pos [layer]
-  (let [{pos :pos val :val range :range} layer
-        abs-val (mod (+ (:pos layer) (:val layer)) (:range layer))]
-    (if (even? (quot pos range))
-      abs-val
-      (- range abs-val))))
+  (let [-cycle (cycle-range (:range layer))
+        pos (:pos layer)]
+    (nth -cycle (mod pos (count -cycle)))))
+
 
 (defn caught-severity [layer]
   (if (= 0 (layer-val-at-pos layer))
     (* (:pos layer) (:range layer))
     0))
 
-(defn solve-1 [input]
+(defn parse-input [input]
   (->> input
        (clojure.string/split-lines)
-       (mapv (comp trace caught-severity trace parse-line trace))
-       ;; (mapv caught-severity)
-       (trace)
+       (mapv parse-line)))
+
+(defn inc-pos [layer]
+  (update layer :pos inc))
+
+(defn sum-severity [layers]
+  (->> layers
+       (mapv caught-severity)
        (reduce + 0)))
 
+(defn solve-1 [input]
+  (->> input
+       (parse-input)
+       (sum-severity)))
+
 (defn solve-2 [input]
-  )
+  (let [layers (parse-input input)]
+    (count
+     (take-while
+      (fn [ls]
+        (let [sev (sum-severity ls)]
+          (println ls)
+          (println sev)
+          (not= 0 sev)))
+      (iterate #(mapv inc-pos %) layers)))))
 
 (def input (load-input-file "13"))
 
+(defn poses-and-cycle-counts [-input]
+  (mapv
+   (fn [l]
+     [:pos (:pos l)
+      :count (count (cycle-range (:range l)))])
+   (parse-input -input)))
 
 (defn solve-day-13 []
   (clojure.pprint/pprint (solve-1 input))
