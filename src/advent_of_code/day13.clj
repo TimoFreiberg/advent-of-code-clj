@@ -8,15 +8,24 @@
 
 (defn cycle-range [n]
   (concat (range n) (range (- n 2) 0 -1)))
+(defn cycle-count [n]
+  (max n
+       (* 2 (dec n))))
 
-(defn layer-val-at-pos [layer]
-  (let [-cycle (cycle-range (:range layer))
-        pos (:pos layer)]
-    (nth -cycle (mod pos (count -cycle)))))
+(defn val-0-at-pos? [layer]
+  (= 0
+     (mod
+      (:pos layer)
+      (cycle-count (:range layer)))))
+(defn val-0-at-offset-pos? [n layer]
+  (= 0
+     (mod
+      (+ n (:pos layer))
+      (cycle-count (:range layer)))))
 
 
 (defn caught-severity [layer]
-  (if (= 0 (layer-val-at-pos layer))
+  (if (val-0-at-pos? layer)
     (* (:pos layer) (:range layer))
     0))
 
@@ -42,12 +51,9 @@
   (let [layers (parse-input input)]
     (count
      (take-while
-      (fn [ls]
-        (let [sev (sum-severity ls)]
-          (println ls)
-          (println sev)
-          (not= 0 sev)))
-      (iterate #(mapv inc-pos %) layers)))))
+      (fn [[n ls]]
+        (some #(val-0-at-offset-pos? n %) ls))
+      (map (fn [n] [n layers]) (range))))))
 
 (def input (load-input-file "13"))
 
