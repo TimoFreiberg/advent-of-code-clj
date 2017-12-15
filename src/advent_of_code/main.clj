@@ -16,6 +16,13 @@
        (apply str)
        (Integer/parseInt)))
 
+(defn zp "Zero Pad numbers - takes a number and the length to pad to as arguments"
+  [n c]
+  (loop [s (str n)]
+    (if (< (.length s) c)
+      (recur (str "0" s))
+      s)))
+
 (defn flip [f & args]
   (apply f (reverse args)))
 
