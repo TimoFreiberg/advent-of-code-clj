@@ -50,7 +50,6 @@
        (:vals)
        (partition 16)
        (map (partial apply bit-xor))
-       (trace)
        (map #(format "%02x" %))
        (reduce str)))
 
