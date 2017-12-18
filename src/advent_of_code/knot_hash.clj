@@ -37,16 +37,18 @@
   ([hx] (clojure.pprint/cl-format nil "~b" (biginteger (from-base hx 16))))
   ([pad hx] (zp (hex->bin hx) 128)))
 
-(defn knot-hash
-  ([s] (knot-hash s 16))
-  ([s base] (->> s
-                 (mapv int)
-                 (repeat 64)
-                 (flatten)
-                 (reduce step init-state)
-                 (:vals)
-                 (partition 16)
-                 (mapv (partial apply bit-xor))
-                 (map #(format "%02x" %))
-                 (reduce str)
-                 (hex->bin 128))))
+(defn knot-hash [k]
+  (->> k
+       (mapv int)
+       (flip concat [17, 31, 73, 47, 23])
+       (repeat 64)
+       (flatten)
+       (reduce step init-state)
+       (:vals)
+       (partition 16)
+       (mapv (partial apply bit-xor))
+       (map #(format "%02x" %))
+       (reduce str)))
+
+(defn knot-hash-bin [s]
+  (hex->bin 128 (knot-hash s)))
