@@ -3,10 +3,16 @@
 (defn find-first [pred coll]
   (first (filter pred coll)))
 
+(def ^:dynamic *verbose* false)
+
 (defn trace [& things]
-  (doseq [s things]
-    (clojure.pprint/pprint s))
+  (when *verbose*
+    (doseq [s things]
+      (clojure.pprint/pprint s)))
   (last things))
+
+(defn verbosely [& rest]
+  (binding [*verbose* true] (rest)))
 
 (defn split-words [s] (clojure.string/split s #"\s+"))
 
@@ -28,3 +34,4 @@
 
 (defn load-input-file "load-input-file [day-number] loads content of the input file for the given day " [day-number]
   (slurp (str "resources/day" day-number)))
+
