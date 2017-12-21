@@ -3,10 +3,11 @@
 (def alphabetical-names "abcdefghijklmnop")
 
 (defn mk-init-state [names]
-  (into {}
-        (map vector
-             (range)
-             (map (comp keyword str) names))))
+  (with-meta (into {}
+         (map vector
+              (range)
+              (map (comp keyword str) names)))
+    {:indexes true}))
 
 (def max-index 15)
 
@@ -14,17 +15,21 @@
   [m] (reduce (fn [m [k v]] (assoc m v k)) {} m))
 
 (defn vals-to-indexes [m]
-  (if (keyword? (first m))
+  (if (:vals (meta m))
     m
-    (map-invert m)))
+    (with-meta
+      (map-invert m)
+      {:vals true})))
 
 (defn indexes-to-vals [m]
-  (if (number? (first m))
+  (if (:indexes (meta m))
     m
-    (map-invert m)))
+    (with-meta
+      (map-invert m)
+      {:indexes true})))
 
 (defn inc-vals [m]
-  (clojure.pprint/pprint m)
+  ;; (clojure.pprint/pprint m)
   (reduce
    (fn [m' k] (update m' k inc))
    m
@@ -97,14 +102,22 @@
           (mapv name)
           (apply str)))))
 
-(defn dance-until-loop [moves]
-  (loop [n 0
-         last-pos (mk-init-state alphabetical-names)
-         positions #{(apply str (mapv name alphabetical-names))}]
-    (let [next-pos (perform-dance moves)]
-      (if (contains? positions next-pos)
-        {:iterations n :last-pos last-pos}
-        (recur (inc n) next-pos (conj positions next-pos))))))
+(defn dance-until-loop [limit moves]
+  (let [dance-loop (loop [n 0
+                         last-pos alphabetical-names
+                         positions []]
+                    (let [next-pos (perform-dance last-pos moves)]
+                      (if (.contains positions next-pos)
+                        {:iterations n :last-pos last-pos :all-positions positions}
+                        (recur (inc n) next-pos (conj positions next-pos)))))
+        limit-ix (dec (mod limit (:iterations dance-loop)))]
+    (println "loop:")
+    (prn dance-loop)
+    (println "loop-count `mod` limit:")
+    (println limit-ix)
+    (get
+     (:all-positions dance-loop)
+     limit-ix)))
 
 (defn solve-1 [input]
   (->> input
@@ -114,7 +127,7 @@
 (defn solve-2 [input]
   (->> input
        (parse-input)
-       (dance-until-loop)))
+       (dance-until-loop 1000000000)))
 
 (def input (load-input-file "16"))
 
