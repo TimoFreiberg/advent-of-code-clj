@@ -7,14 +7,12 @@
 
 (defn trace [& things]
   (when *verbose*
-    (doseq [s things]
-      (clojure.pprint/pprint s)))
-  (last things))
+     (prn things)))
 
-(defn verbosely [& rest]
-  (binding [*verbose* true] (rest)))
+(defmacro verbosely [& rest]
+  `(binding [*verbose* true] ~@rest))
 
-(defn split-words [s] (clojure.string/split s #"\s+"))
+(defn split-words [s] (clojure.string/split s #"[\n\s]+"))
 
 (defn string-to-int [s]
   (->> s
