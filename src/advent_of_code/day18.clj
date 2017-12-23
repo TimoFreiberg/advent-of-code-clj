@@ -1,4 +1,8 @@
-(ns advent-of-code.day18 (:require [advent-of-code.main :refer :all]))
+(ns advent-of-code.day18 (:require
+                          [advent-of-code.main :refer :all]
+                          [clojure.core.async
+                           :as a
+                           :refer [>!]]))
 
 (defn get-val [state x]
   (cond
@@ -33,7 +37,15 @@
      (assoc state :snd x-val))))
 
 (defn cmd-send [state x]
-   )
+  (let [x-val (get-val state x)]
+    (.add (:queue-out state) x-val)
+    (inc-cursor state)))
+
+(defn cmd-receive [state x]
+  (let [queue (:queue-in state)]
+    (if (.isEmpty queue)
+      state
+      (set-val state x (.remove queue)))))
 
 (defn cmd-set [state x y]
   (let [y-val (get-val state y)]
@@ -52,7 +64,6 @@
 (defn cmd-mod [state x y]
   (inc-cursor
    (apply-fn-to-reg state x y mod)))
-
 
 (defn cmd-recover [state x]
   (let [recovered (recover-val state)]
@@ -95,18 +106,31 @@
          (op state arg-1)))
      :iterations inc)))
 
-(defn run-program [instructions]
+(defn run-program-on-state [init-state instructions]
   (trace "running program with instructions:" instructions)
   (take-while
    #(cursor-in-range (second %))
    (iterate
     (fn ap-instr [[_ state]]
+      (trace "ap-instr:" state)
       (let [instruction (get instructions (get state :cursor))]
         [instruction
          (apply-instruction instruction state)]))
-    [nil (mk-init-state instructions)])))
+    [nil init-state])))
 
-(defn run-n-programs)
+(defn run-program [instructions]
+  (run-program-on-state (mk-init-state instructions) instructions))
+
+(defn run-2-programs [instructions]
+  (let [state-1 (mk-init-state instructions)
+        state-2 state-1
+        queue-1-to-2 (java.util.ArrayDeque.)
+        queue-2-to-1 (java.util.ArrayDeque.)
+        state-1 (assoc state-1 :queue-out queue-1-to-2 :queue-in queue-2-to-1)
+        state-2 (assoc state-2 :queue-out queue-2-to-1 :queue-in queue-1-to-2)
+        prog-1-log (run-program-on-state state-1 instructions)
+        prog-2-log (run-program-on-state state-2 instructions)]
+    (map vector prog-1-log prog-2-log)))
 
 (defn keyword-or-number [s]
   (if (nil? s)
@@ -129,22 +153,24 @@
       "jgz" {:op cmd-jgz :arg-1 arg-1 :arg-2 arg-2})))
 
 (defn parse-instruction-2 [line]
-  (let [[cmd arg-1 arg-2] (split-words line)
-        arg-1 (keyword arg-1)
-        arg-2 (keyword-or-number arg-2)]
-    (case cmd
-      "snd" {:op cmd-send :arg-1 arg-1}
-      "set" {:op cmd-set :arg-1 arg-1 :arg-2 arg-2}
-      "add" {:op cmd-add :arg-1 arg-1 :arg-2 arg-2}
-      "mul" {:op cmd-mul :arg-1 arg-1 :arg-2 arg-2}
-      "mod" {:op cmd-mod :arg-1 arg-1 :arg-2 arg-2}
-      "rcv" {:op cmd-recover :arg-1 arg-1}
-      "jgz" {:op cmd-jgz :arg-1 arg-1 :arg-2 arg-2})))
+  (update
+   (parse-instruction-1 line)
+   :op
+   (fn [op]
+     (case op
+       cmd-sound cmd-send
+       cmd-recover cmd-receive
+       op))))
 
-(defn parse-input [s]
+(defn parse-input-1 [s]
   (->> s
        (clojure.string/split-lines)
-       (mapv parse-instruction)))
+       (mapv parse-instruction-1)))
+
+(defn parse-input-2 [s]
+  (->> s
+       (clojure.string/split-lines)
+       (mapv parse-instruction-2)))
 
 (defn op-is [op log-entry]
   (= op (get-in log-entry [0 :op])))
@@ -156,7 +182,7 @@
 
 (defn solve-1 [steps]
   (let [prog-log (->> steps
-                      (parse-input)
+                      (parse-input-1)
                       (run-program))]
     (->> prog-log
          (filter #(op-is cmd-recover %))
@@ -166,7 +192,7 @@
 (defn solve-2 [steps])
 
 (def input (load-input-file "18"))
-(def parsed-input (parse-input input))
+(def parsed-input (parse-input-1 input))
 
 (defn solve-day-18 []
   (clojure.pprint/pprint (solve-1 input))
