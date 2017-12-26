@@ -195,7 +195,7 @@
                       (run-2-programs))]
     (->> prog-logs
          (filter #(op-is cmd-send (first %)))
-         (take 15)
+         ;; (take 15)
          (trace-pprint)
          (count)))
   )
