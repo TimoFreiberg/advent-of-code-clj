@@ -12,82 +12,27 @@
 (defn set-val [state reg val]
   (assoc-in state [:reg reg] val))
 
-(defn apply-cursor [state f]
-  (update state :cursor f))
+(defn mk-init-state
+  ([instructions] (mk-init-state instructions 0))
+  ([instructions prog-id] {:instruction-count (count instructions)
+                           :cursor 0
+                           :reg {:p prog-id}
+                           :in (clojure.lang.PersistentQueue/EMPTY)
+                           :out (clojure.lang.PersistentQueue/EMPTY)
+                           :sends 0
+                           :blocked false}))
 
-(defn inc-cursor [state]
-  (apply-cursor state inc))
-
-(defn apply-fn-to-reg [state x y op]
-  (let [x-val (get-val state x)
-        y-val (get-val state y)
-        new-val (op x-val y-val)]
-    (trace "storing" new-val "in" x)
-    (set-val state x (op x-val y-val))))
-
-(defn cmd-sound [state x]
-  (let [x-val (get-val state x)]
-    (trace "sound:" x "/" x-val)
-    (inc-cursor
-     (assoc state :snd x-val))))
-
-(defn cmd-send [state x]
-  (let [x-val (get-val state x)]
-    (.add (:queue-out state) x-val)
-    (inc-cursor state)))
-
-(defn cmd-receive [state x]
-  (let [queue (:queue-in state)]
-    (if (.isEmpty queue)
-      (assoc state :blocked true)
-      (-> state
-          (set-val x (.remove queue))
-          (dissoc :blocked)
-          (inc-cursor)))))
-
-(defn cmd-set [state x y]
-  (let [y-val (get-val state y)]
-    (trace "set" x "to" y-val)
-    (inc-cursor
-     (set-val state x y-val))))
-
-(defn cmd-add [state x y]
-  (inc-cursor
-   (apply-fn-to-reg state x y +)))
-
-(defn cmd-mul [state x y]
-  (inc-cursor
-   (apply-fn-to-reg state x y *)))
-
-(defn cmd-mod [state x y]
-  (inc-cursor
-   (apply-fn-to-reg state x y mod)))
-
-(defn cmd-jgz [state x y]
-  (let [y-val (get-val state y)]
-    (if (> (get-val state x) 0)
-      (do (trace "jumping" y-val)
-          (apply-cursor state #(+ % (get-val state y))))
-      (do
-        (trace "not jumping, because" x "has val 0")
-        (inc-cursor state)))))
-
-(defn cursor-in-range [state]
-  (let [cursor (:cursor state)]
-    (and
-     (>= cursor 0)
-     (< cursor (:instruction-count state)))))
-
-(defn mk-init-state [instructions]
-  {:instruction-count (count instructions)
-   :cursor 0})
-
-(defn apply-instruction-common [instruction state]
+(defn apply-instruction-1 [instruction state]
   (let [{:keys [op arg-1 arg-2]} instruction
         cursor (:cursor state)
-        state (inc-cursor state)
+        state (update state :cursor inc)
         get-val (partial get-val state)]
+    (trace instruction)
     (case op
+      :snd (assoc state :snd (get-val arg-1))
+      :rcv (if (pos? (get-val arg-1))
+             (assoc state :recovered (:snd state))
+             state)
       :set (set-val state arg-1 (get-val arg-2))
       :add (set-val state arg-1 (+
                                  (get-val arg-1)
@@ -107,24 +52,6 @@
         (println "could not apply instruction" op)
         state))))
 
-(defn apply-instruction-1 [instruction state]
-  (let [{:keys [op arg-1 arg-2]} instruction
-        cursor (:cursor state)
-        _ (if (nil? (:cursor state)) (prn state))
-        state (update state :cursor inc)
-        get-val (partial get-val state)]
-    (case op
-      :snd (assoc state :snd (get-val arg-1))
-      :rcv (if (pos? (get-val arg-1))
-             (assoc state :recovered (:snd state))
-             state)
-      (apply-instruction-common instruction state))))
-
-(defn both-blocked? [[log-entry-1 log-entry-2]]
-  (and
-   (get-in log-entry-1 [1 :blocked])
-   (get-in log-entry-2 [1 :blocked])))
-
 (defn keyword-or-number [s]
   (if (nil? s)
     nil
@@ -143,16 +70,81 @@
 
 (defn solve-1 [steps]
   (let [instructions (parse-input steps)]
-    (loop [state (mk-init-state instructions)]
+    (loop [state (mk-init-state instructions)
+           counter 0]
       (let [recovered (:recovered state)
             cursor (:cursor state)]
+        (trace state)
         (if recovered
           recovered
           (recur (apply-instruction-1
-                  (get instructions (:cursor state))
-                  state)))))))
+                  (get instructions cursor)
+                  state) (inc counter)))))))
 
-(defn solve-2 [steps])
+(defn apply-instruction-2 [instruction state]
+  (let [{:keys [op arg-1 arg-2]} instruction
+        cursor (:cursor state)
+        state (update state :cursor inc)
+        get-val (partial get-val state)]
+    (trace instruction)
+    (case op
+      :snd (-> state
+               (update :out #(conj % (get-val arg-1)))
+               (update :sends inc))
+      :rcv (if (not-empty (:in state))
+             (-> state
+                 (set-val arg-1 (peek (:in state)))
+                 (update :in pop)
+                 (assoc :blocked false))
+             (assoc state
+                    :blocked true
+                    :cursor cursor))
+      :set (set-val state arg-1 (get-val arg-2))
+      :add (set-val state arg-1 (+
+                                 (get-val arg-1)
+                                 (get-val arg-2)))
+      :mul (set-val state arg-1 (*
+                                 (get-val arg-1)
+                                 (get-val arg-2)))
+      :mod (set-val state arg-1 (mod
+                                 (get-val arg-1)
+                                 (get-val arg-2)))
+      :jgz (if (pos? (get-val arg-1))
+             (assoc state :cursor (+
+                                   cursor
+                                   (get-val arg-2)))
+             state)
+      (do
+        (println "could not apply instruction" op)
+        state))))
+
+(defn solve-2 [steps]
+  (let [instructions (parse-input steps)]
+    (loop [state-0 (mk-init-state instructions 0)
+           state-1 (mk-init-state instructions 1)
+           counter 0]
+      (let [state-0-in (:out state-1)
+            state-1-in (:out state-0)
+            state-0 (-> state-0
+                        (update :in #(apply conj % state-0-in))
+                        (assoc :out clojure.lang.PersistentQueue/EMPTY))
+            state-1 (-> state-1
+                        (update :in #(apply conj % state-1-in))
+                        (assoc :out clojure.lang.PersistentQueue/EMPTY))
+            ]
+        (trace state-0)
+        (trace state-1)
+        (if (and
+             (:blocked state-0)
+             (:blocked state-1))
+          (:sends state-1)
+          (recur (apply-instruction-2
+                  (get instructions (:cursor state-0))
+                  state-0)
+                 (apply-instruction-2
+                  (get instructions (:cursor state-1))
+                  state-1)
+                 (inc counter)))))))
 
 (def input (load-input-file "18"))
 
