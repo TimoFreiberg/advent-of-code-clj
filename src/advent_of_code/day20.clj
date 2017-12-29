@@ -1,23 +1,15 @@
-(ns advent-of-code.day20)
+(ns advent-of-code.day20 (:require
+                          [advent-of-code.main :refer :all]))
 
 
 (defn solve-1 [input]
-  (->> input
-       (clojure.string/split-lines)
-       (walk-the-line)
-       (last)
-       (:letters)
-       (apply str)))
+  )
 
 (defn solve-2 [input]
-  (->> input
-       (clojure.string/split-lines)
-       (walk-the-line)
-       (last)
-       (:steps)))
+  )
 
-(def input (load-input-file "19"))
+(def input (load-input-file "20"))
 
-(defn solve-day-19 []
+(defn solve-day-20 []
   (clojure.pprint/pprint (solve-1 input))
   (clojure.pprint/pprint (solve-2 input)))
