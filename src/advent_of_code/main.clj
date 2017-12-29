@@ -12,7 +12,7 @@
 
 (defn trace-pprint [& things]
   (when *verbose*
-    (run! clojure.pprint/pprint things))
+    (clojure.pprint/pprint things))
   (last things))
 
 (defmacro verbosely [& rest]
