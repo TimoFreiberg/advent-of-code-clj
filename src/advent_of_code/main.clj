@@ -37,5 +37,5 @@
   (apply f (reverse args)))
 
 (defn load-input-file "load-input-file [day-number] loads content of the input file for the given day " [day-number]
-  (slurp (str "resources/day" day-number)))
+  (slurp (clojure.java.io/resource (str "day" day-number ".txt"))))
 
