@@ -107,16 +107,25 @@ accel = <'a=<'> num comma num comma num <'>'>
 
 (defn resolve-collisions [particles]
   (loop [state particles
+         particles-count (count particles)
          counter 0
-         ])
-  (take 5000 (iterate run-simulation-tick {:iterations 0 :particles particles})))
+         last-collision 0]
+    (let [next-state (run-simulation-tick state)
+          next-particles-count (count next-state)]
+      (if (not= next-particles-count particles-count)
+        (do
+          (println "Collision at iteration " counter)
+          (recur next-state next-particles-count (inc counter) counter))
+        (if (> (- counter last-collision) 5000)
+          {:state state
+           :particles-left particles-count
+           :iterations counter}
+          (recur next-state next-particles-count (inc counter) last-collision))))))
 
 (defn solve-2 [input]
   (->> input
        (parse-input)
-       (resolve-collisions)
-       (last)
-       (count)))
+       (resolve-collisions)))
 
 (def input (load-input-file "20"))
 
