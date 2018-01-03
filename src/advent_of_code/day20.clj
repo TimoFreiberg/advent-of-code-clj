@@ -4,12 +4,13 @@
 
 (def line-parser
   (insta/parser
-   "<line> = pos comma vel comma accel
-<comma> = <',' #'\\s*'>
+   "<line> = trim pos comma vel comma accel trim
+<trim> = <#'\\s*'>
+<comma> = trim <','> trim
 pos = <'p=<'> num comma num comma num <'>'>
 vel = <'v=<'> num comma num comma num <'>'>
 accel = <'a=<'> num comma num comma num <'>'>
-<num> = #'(-)?\\d+'"
+<num> = trim #'(-)?\\d+' trim"
    :output-format :enlive))
 
 (defn parse-line [line]
@@ -28,9 +29,10 @@ accel = <'a=<'> num comma num comma num <'>'>
   (mapv + vec1 vec2))
 
 (defn tick [{:keys [pos vel accel] :as particle}]
-  (-> particle
-      (update :pos +vec vel)
-      (update :vel +vec accel)))
+  (let [new-vel (+vec accel vel)]
+    (-> particle
+        (update :pos +vec new-vel)
+        (assoc :vel new-vel))))
 
 (defn manhattan-distance [vec]
   (->> vec
@@ -73,23 +75,6 @@ accel = <'a=<'> num comma num comma num <'>'>
        (parse-input)
        (find-particle-with-lowest-acceleration)))
 
-(defn find-duplicate-positions [particles]
-  (loop [stack particles
-         found-positions #{}
-         duplicate-positions #{}]
-    (if (empty? stack)
-      duplicate-positions
-      (let [current-pos (:pos (first stack))]
-        (if (contains? found-positions current-pos)
-          (recur
-           (rest stack)
-           found-positions
-           (conj duplicate-positions current-pos))
-          (recur
-           (rest stack)
-           (conj found-positions current-pos)
-           duplicate-positions))))))
-
 (defn remove-colliding-particles [particles]
   (let [duplicate-positions (into #{}
                                   (for [[id freq] (frequencies (mapv :pos particles))
@@ -98,34 +83,54 @@ accel = <'a=<'> num comma num comma num <'>'>
     (filter #(not (contains? duplicate-positions (:pos %))) particles)))
 
 (defn run-simulation-tick [state]
-  (-> state
-      (update :particles
-              #(->> %
-                    (mapv tick)
-                    (remove-colliding-particles)))
-      (update :iterations inc)))
+  (->> state
+       (mapv tick)
+       (remove-colliding-particles)))
 
 (defn resolve-collisions [particles]
-  (loop [state particles
+  (loop [state (remove-colliding-particles particles)
          particles-count (count particles)
          counter 0
          last-collision 0]
     (let [next-state (run-simulation-tick state)
-          next-particles-count (count next-state)]
-      (if (not= next-particles-count particles-count)
+          next-particles-count (count next-state)
+          print-state #(trace
+                        "Iteration"
+                        counter
+                        ", particles left:"
+                        particles-count)
+          mk-report (fn [] {:state state
+                            :particles-left particles-count
+                            :iterations counter})]
+      (trace (mk-report))
+      (cond
+
+        (zero? next-particles-count) (do
+                                       (trace "No particles left")
+                                       (mk-report))
+
+        (not=
+         next-particles-count particles-count)
         (do
-          (println "Collision at iteration " counter)
+          (trace "Collision at iteration " counter)
+          (print-state)
           (recur next-state next-particles-count (inc counter) counter))
-        (if (> (- counter last-collision) 5000)
-          {:state state
-           :particles-left particles-count
-           :iterations counter}
-          (recur next-state next-particles-count (inc counter) last-collision))))))
+
+        (> (- counter last-collision) 500) (mk-report)
+
+        :else (do (when (zero? (mod counter 1000)) (print-state))
+                  (recur
+                   next-state
+                   next-particles-count
+                   (inc counter)
+                   last-collision))))))
 
 (defn solve-2 [input]
-  (->> input
-       (parse-input)
-       (resolve-collisions)))
+  (-> input
+      (parse-input)
+      (resolve-collisions)
+      (:state)
+      (count)))
 
 (def input (load-input-file "20"))
 
